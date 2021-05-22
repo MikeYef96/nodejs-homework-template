@@ -30,6 +30,11 @@ const contactSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  subscription: {
+    type: String,
+    default: 'free',
+    enum: ['free', 'pro', 'premium'],
+  },
   owner: {
     type: SchemaTypes.ObjectId,
     ref: 'user',

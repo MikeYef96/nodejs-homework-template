@@ -6,6 +6,7 @@ const schemaValidateContact = Joi.object({
   email: Joi.string().email(),
   phone: Joi.string().pattern(/\(\d{3}\)\s\d{3}-\d{4}/),
   favorite: Joi.boolean(),
+  subscription: Joi.any().valid('free', 'starter', 'pro', 'premium'),
 });
 
 const schemaValidateAuth = Joi.object({
