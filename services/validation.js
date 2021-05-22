@@ -2,7 +2,7 @@ const Joi = require('joi');
 const { HttpCode } = require('./constants');
 
 const schemaValidateContact = Joi.object({
-  name: Joi.string().alphanum().min(3).max(30),
+  name: Joi.string().min(3).max(30),
   email: Joi.string().email(),
   phone: Joi.string().pattern(/\(\d{3}\)\s\d{3}-\d{4}/),
   favorite: Joi.boolean(),
@@ -40,4 +40,14 @@ module.exports.validateAuth = (req, _res, next) => {
 
 module.exports.validateUpdateSub = (req, _res, next) => {
   return validate(schemaValidateUpdateSub, req.body, next);
+};
+
+module.exports.validateUploadAvatar = (req, _res, next) => {
+  if (!req.file) {
+    return next({
+      status: HttpCode.BAD_REQUEST,
+      message: 'Bad request',
+    });
+  }
+  next();
 };
