@@ -33,7 +33,7 @@ const contactSchema = new Schema({
   subscription: {
     type: String,
     default: 'free',
-    enum: ['free', 'pro', 'premium'],
+    enum: ['free', 'starter', 'pro', 'premium'],
   },
   owner: {
     type: SchemaTypes.ObjectId,

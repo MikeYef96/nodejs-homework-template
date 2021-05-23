@@ -1,7 +1,12 @@
 const jwt = require('jsonwebtoken');
 const Users = require('../model/users');
+const fs = require('fs/promises');
+const path = require('path');
+const Jimp = require('jimp');
 const { HttpCode } = require('../services/constants');
 require('dotenv').config();
+const createFolderIsExist = require('../services/create-dir');
+
 const SECRET_KEY = process.env.JWT_SECRET;
 
 const register = async (req, res, next) => {
@@ -22,17 +27,18 @@ const register = async (req, res, next) => {
         user: {
           email: newUser.email,
           subscription: newUser.subscription,
+          avatarURL: newUser.avatarURL,
         },
       },
     });
-  } catch (e) {
-    if (e.name === 'ValidationError' || e.name === 'MongoError') {
+  } catch (evt) {
+    if (evt.name === 'ValidationError' || evt.name === 'MongoError') {
       return next({
         status: HttpCode.BAD_REQUEST,
-        message: e.message.replace(/"/g, ''),
+        message: evt.message.replace(/"/g, ''),
       });
     }
-    next(e);
+    next(evt);
   }
 };
 
@@ -59,6 +65,7 @@ const login = async (req, res, next) => {
         user: {
           email: user.email,
           subscription: user.subscription,
+          avatarURL: user.avatarURL,
         },
       },
     });
@@ -90,6 +97,7 @@ const currentUser = async (req, res, next) => {
         user: {
           email: user.email,
           subscription: user.subscription,
+          avatarURL: user.avatarURL,
         },
       },
     });
@@ -110,6 +118,7 @@ const updateSub = async (req, res, next) => {
         user: {
           email: user.email,
           subscription: user.subscription,
+          avatarURL: user.avatarURL,
         },
       },
     });
@@ -124,4 +133,42 @@ const updateSub = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, currentUser, updateSub };
+const saveAvatarToStatic = async (req) => {
+  const id = String(req.user._id);
+  const AVATAR_URL = process.env.AVATAR_URL;
+  const pathFile = req.file.path;
+  const newNameAvatar = `${Date.now()}-${req.file.originalname}`;
+  const img = await Jimp.read(pathFile);
+  await img
+    .autocrop()
+    .cover(250, 250, Jimp.HORIZONTAL_ALIGN_CENTER | Jimp.VERTICAL_ALIGN_MIDDLE)
+    .writeAsync(pathFile);
+  await createFolderIsExist(path.join(AVATAR_URL, id));
+  await fs.rename(pathFile, path.join(AVATAR_URL, id, newNameAvatar));
+  const avatarUrl = path.join(id, newNameAvatar);
+  try {
+    await fs.unlink(path.join(process.cwd(), AVATAR_URL, req.user.avatarURL));
+  } catch (e) {
+    console.log(e.message);
+  }
+  return avatarUrl;
+};
+
+const avatars = async (req, res, next) => {
+  try {
+    const id = String(req.user._id);
+    const avatarUrl = await saveAvatarToStatic(req);
+    await Users.updateAvatar(id, avatarUrl);
+    return res.json({
+      status: 'success',
+      code: HttpCode.OK,
+      data: {
+        avatarUrl,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+module.exports = { register, login, logout, currentUser, updateSub, avatars };
