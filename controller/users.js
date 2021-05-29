@@ -4,6 +4,8 @@ const fs = require('fs/promises');
 const path = require('path');
 const Jimp = require('jimp');
 const { HttpCode } = require('../services/constants');
+const { nanoid } = require('nanoid');
+const EmailService = require('../services/email');
 require('dotenv').config();
 const createFolderIsExist = require('../services/create-dir');
 
@@ -19,6 +21,9 @@ const register = async (req, res, next) => {
         message: 'Email in use',
       });
     }
+    const verificationToken = nanoid();
+    const emailService = new EmailService(process.env.NODE_ENV);
+    await emailService.sendEmail(verificationToken, email);
     const newUser = await Users.create(req.body);
     return res.status(HttpCode.CREATED).json({
       status: 'success',
@@ -171,4 +176,33 @@ const avatars = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, currentUser, updateSub, avatars };
+const verify = async (req, res, next) => {
+  try {
+    const user = await Users.findByVerificationToken(
+      req.params.verificationToken,
+    );
+    if (!user) {
+      return next({
+        status: HttpCode.NOT_FOUND,
+        message: 'User not found',
+      });
+    }
+    await Users.updateVerificationToken(user.id, null);
+    return res.json({
+      status: 'success',
+      code: HttpCode.OK,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  logout,
+  currentUser,
+  updateSub,
+  avatars,
+  verify,
+};
